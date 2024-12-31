@@ -1,1 +1,1 @@
-read_comp A, 4, 5
+mult_comp_real A, 4
