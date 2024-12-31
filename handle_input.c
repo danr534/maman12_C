@@ -8,10 +8,20 @@ enum names {READ_COMP, PRINT_COMP, ADD_COMP, SUB_COMP, MULT_COMP_REAL, MULT_COMP
 const char *commands[] = {"read_comp", "print_comp", "add_comp", "sub_comp", "mult_comp_real", "mult_comp_img", "mult_comp_comp", "abs_comp", "stop"};
 const char *variables[] = {"A", "B", "C", "D", "E", "F"};
 
-int count_commas(char *word);
-int decode_2_variables(char *word, char *y);
-int decode_mult(char *word, double *z);
-int decode_read_comp(char *word, double *z, double *w);
+/* remove all blanks in a line */
+void remove_whites(char *line);
+
+/* find command number in a line */
+int find_command(char *line);
+
+/* decode commands that use 2 variables which are add_comp, sub_comp and mult_comp_comp */
+int decode_2_variables(char *line, char *var2);
+
+/* decode commands that use 1 variable and 1 number which are mult_comp_real and mult_comp_img*/
+int decode_mult(char *line, double *num1);
+
+/* decode commands that use 1 variable and 2 numbers which is only read_comp */
+int decode_read_comp(char *line, double *num1, double *num2);
 
 void get_line(char line[]) {
     printf("Please enter a command:\n");
@@ -21,40 +31,25 @@ void get_line(char line[]) {
     }
 }
 
-int decode_line(char line[], int *command, char *x, char *y, double *z, double *w) {
-    int c;
-    /* get the first word seperated by space or tab */
-    char *word;
-    word = strtok(line, " \t\n");
+int decode_line(char line[], int *command, char *var1, char *var2, double *num1, double *num2) {
+    int c; /* command number */
 
-    /* check if the line is empty */
-    if(word == NULL) return 0;
+    while(*line == ' ' || *line == '\t' || *line == '\n') line++; /* find a non white letter */
+    if(*line == '\0') return 0; /* check if the line is white letters only*/
 
-    /* check if there is an illegal comma */
-    if(word[strlen(word) - 1] == ',') {
-        printf("Illegal comma.\n");
-        return 0;
-    }
-
-    /* check if the word is a valid command */
-    for(c = 0; c < NUM_COMMANDS; c++) {
-        if(!strcmp(word, commands[c])) break; /* if the word is equal to a string in commands then c is the index of the string */
-    }
-    
-    /* if the word is not in commands print the following error */
-    if(c == NUM_COMMANDS) {
+    /* check if the command is valid */
+    c = find_command(line);
+    if(c == -1) {
         printf("Undefined command name.\n");
         return 0;
     }
-
-    *command = c; /* save the command number */
-
-    /* get the first parameter */
-    word = strtok(NULL, " \t\n");
+    *command = c;
+    line += strlen(commands[c]);
 
     /* check if the command is stop */
     if(c == STOP) {
-        if(word == NULL) {
+        remove_whites(line);
+        if(*line == '\0') {
             printf("Exiting program with stop command.\n");
             return 1;
         }
@@ -63,135 +58,155 @@ int decode_line(char line[], int *command, char *x, char *y, double *z, double *
             return 0;
         }
     }
-
-    /* check if the word is a valid variable */
-    if(word == NULL) {
+    /* check for a space or tab after command */
+    if(*line != ' ' && *line != '\t') {
+        printf("Missing space after command.\n");
+        return 0;
+    }
+    remove_whites(line);
+    /* check if the first variable is valid */
+    if(*line == '\0') {
         printf("Missing parameter.\n");
         return 0;
     }
-    
-    if(*word < 'A' || *word > 'F') {
+    if(*line == ',') {
+        printf("Illegal comma.\n");
+        return 0;
+    }
+    if(*line < 'A' || *line > 'F') {
         printf("Undefined complex variable.\n");
         return 0;
     }
+    *var1 = *line;
+    line++;
 
-    if((c == PRINT_COMP || c == ABS_COMP) && strlen(word) > 1) {
-        printf("Extraneous text after end of command\n");
-        return 0;
-    }
-
-    if(c != PRINT_COMP && c != ABS_COMP && strlen(word) == 1) {
-        printf("Missing comma.\n");
-        return 0;
-    }
-
-    if(count_commas(word) > 1) {
-        printf("Multiple consecutive commas\n");
-        return 0;
-    }
-
-    if(strlen(word) > 2 || (strlen(word) == 2 && count_commas(word) == 0)) {
-        printf("Undefined complex variable.\n");
-        return 0;
-    }
-
-    *x = *word;
-    
-    /* get the second parameter */
-    word = strtok(NULL, " \t\n");
-
-    /* check if the command uses only 1 variable */
+    /* check for 1 variable commands */
     if(c == PRINT_COMP || c == ABS_COMP) {
-        if(word == NULL) return 1;
+        if(*line == '\0') return 1;
         else {
             printf("Extraneous text after end of command.\n");
             return 0;
         }
     }
+    /* check for comma */
+    if(*line != ',') {
+        printf("Missing comma.\n");
+        return 0;
+    }
+    line++;
 
-    if(c == ADD_COMP || c == SUB_COMP || c == MULT_COMP_COMP) return decode_2_variables(word, y);
-    else if(c == MULT_COMP_REAL || c == MULT_COMP_IMG) return decode_mult(word, z);
-    else return decode_read_comp(word, z, w);
+    /* check for null terminator */
+    if(*line == '\0') {
+        printf("Missing parameter.\n");
+        return 0;
+    }
+    /* check for multiple consecutive commas */
+    if(*line == ',') {
+        printf("Multiple consecutive commas\n");
+        return 0;
+    }
+    /* divide into 3 cases */
+    if(c == ADD_COMP || c == SUB_COMP || c == MULT_COMP_COMP) return decode_2_variables(line, var2);
+    else if(c == MULT_COMP_REAL || c == MULT_COMP_IMG) return decode_mult(line, num1);
+    else return decode_read_comp(line, num1, num2);
 
     return 1;
 }
 
-int count_commas(char *word) {
-    int count = 0;
-    int i;
-    for(i = 0; i < strlen(word); i++) {
-        if(word[i] == ',') count++;
+int find_command(char *line) {
+    int command_len, i = 0;
+    for(i = 0; i < NUM_COMMANDS; i++) {
+        command_len = strlen(commands[i]);
+        if(!strncmp(line, commands[i], command_len)) return i;
     }
-    return count;
+    return -1;
 }
 
-int decode_2_variables(char *word, char *y) {
-    char *rest_of_line;
-
-    if (word == NULL) {
-        printf("Missing parameter\n.");
-        return 0;
+void remove_whites(char *line) {
+    int i = 0, j = 0;
+    while (line[i] != '\0') {
+        if (line[i] != ' ' && line[i] != '\t' && line[i] != '\n') line[j++] = line[i];
+        i++;
     }
+    line[j] = '\0';
+}
 
-    if(*word < 'A' || *word > 'F') {
+int decode_2_variables(char *line, char *var2) {
+    /* check if the second variable is valid*/
+    if(*line < 'A' || *line > 'F') {
         printf("Undefined complex variable.\n");
         return 0;
     }
+    *var2 = *line;
+    line++;
 
-    rest_of_line = strtok(NULL, "\n");
-
-    if(strlen(word) > 1 || rest_of_line != NULL) {
-        printf("Extraneous text after end of command\n");
+    /* check for extraneous text */
+    if(*line != '\0') {
+        printf("Extraneous text after end of command.\n");
         return 0;
     }
-
-    *y = *word;
     return 1;
 }
 
-int decode_mult(char *word, double *z) {
-    char *endPtr;
-    double value;
-    char *rest_of_line;
+int decode_mult(char *line, double *num1) {
+    char *endPtr; /* pointer to the end of the number in line*/
+    double value; /* the value of the number */
 
-    if(word == NULL) {
-        printf("Missing parameter\n.");
-        return 0;
-    }
-
-    value = strtod(word, &endPtr);
-    if(*endPtr) {
+    /* check if the second parameter is a number */
+    value = strtod(line, &endPtr);
+    if(endPtr == line) {
         printf("Invalid parameter - not a number\n");
         return 0;
     }
-
-    rest_of_line = strtok(NULL, "\n");
-    if(rest_of_line != NULL) {
-        printf("Extraneous text after end of command\n");
+    if(*endPtr != '\0') {
+        printf("Extraneous text after end of command.\n");
         return 0;
     }
 
-    *z = value;
+    *num1 = value;
     return 1;
 }
 
-int decode_read_comp(char *word, double *z, double *w) {
-    char *endPtr;
-    double value;
+int decode_read_comp(char *line, double *num1, double *num2) {
+    char *endPtr; /* pointer to the end of the number in line*/
+    double value; /* the value of the number */
 
-    if(word == NULL) {
-        printf("Missing parameter\n.");
+    /* check if the second parameter is a number */
+    value = strtod(line, &endPtr);
+    if(endPtr == line) {
+        printf("Invalid parameter - not a number\n");
         return 0;
     }
-
-    value = strtod(word, &endPtr);
-
     if(*endPtr != ',') {
         printf("Missing comma.\n");
         return 0;
     }
-    /* check for mult_comp_real A , 3... */
-    *z = value;
+    *num1 = value;
+    line = endPtr + 1;
 
+    /* check if there is a third parameter */
+    if(*line == '\0') {
+        printf("Missing parameter.\n");
+        return 0;
+    }
 
+    /* check for multiple consecutive commas */
+    if(*line == ',') {
+        printf("Multiple consecutive commas\n");
+        return 0;
+    }
+
+    /* check if the third parameter is a number */
+    value = strtod(line, &endPtr);
+    if(endPtr == line) {
+        printf("Invalid parameter - not a number\n");
+        return 0;
+    }
+    if(*endPtr != '\0') {
+        printf("Extraneous text after end of command.\n");
+        return 0;
+    }
+    *num2 = value;
+    return 1;
+    
 }
