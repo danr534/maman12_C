@@ -1,6 +1,5 @@
 #include "complex.h"
 
-/* Assign real and imginary values to a complex number */ 
 void read_comp(complex *c, double real, double img) {
 	c->real = real;
 	c->img = img;
@@ -11,13 +10,13 @@ void print_comp(complex c) {
 	else printf("%.2f - (%.2f)i\n", c.real, -c.img);
 }
 
-void add(complex c1, complex c2) {
+void add_comp(complex c1, complex c2) {
 	complex tmp;
 	read_comp(&tmp, c1.real + c2.real, c1.img + c2.img);
 	print_comp(tmp);
 }
 
-void sub(complex c1, complex c2) {
+void sub_comp(complex c1, complex c2) {
 	complex tmp;
 	read_comp(&tmp, c1.real - c2.real, c1.img - c2.img);
 	print_comp(tmp);

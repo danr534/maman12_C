@@ -1,18 +1,21 @@
 #include "handle_input.h"
 
+/* number of commands */
 #define NUM_COMMANDS 9
-#define NUM_VARIABLES 6
 
-/* numbers to identify the command names */
-enum names {READ_COMP, PRINT_COMP, ADD_COMP, SUB_COMP, MULT_COMP_REAL, MULT_COMP_IMG, MULT_COMP_COMP, ABS_COMP, STOP};
 const char *commands[] = {"read_comp", "print_comp", "add_comp", "sub_comp", "mult_comp_real", "mult_comp_img", "mult_comp_comp", "abs_comp", "stop"};
-const char *variables[] = {"A", "B", "C", "D", "E", "F"};
 
 /* remove all blanks in a line */
 void remove_whites(char *line);
 
 /* find command number in a line */
 int find_command(char *line);
+
+/* decode stop command */
+int decode_stop(char *line);
+
+/* decode commands that use 1 variable which are print_comp and abs_comp*/
+int decode_1_variable(char *line);
 
 /* decode commands that use 2 variables which are add_comp, sub_comp and mult_comp_comp */
 int decode_2_variables(char *line, char *var2);
@@ -47,17 +50,8 @@ int decode_line(char line[], int *command, char *var1, char *var2, double *num1,
     line += strlen(commands[c]);
 
     /* check if the command is stop */
-    if(c == STOP) {
-        remove_whites(line);
-        if(*line == '\0') {
-            printf("Exiting program with stop command.\n");
-            return 1;
-        }
-        else {
-            printf("Extraneous text after end of command.\n");
-            return 0;
-        }
-    }
+    if(c == STOP) return decode_stop(line);
+
     /* check for a space or tab after command */
     if(*line != ' ' && *line != '\t') {
         printf("Missing space after command.\n");
@@ -81,13 +75,8 @@ int decode_line(char line[], int *command, char *var1, char *var2, double *num1,
     line++;
 
     /* check for 1 variable commands */
-    if(c == PRINT_COMP || c == ABS_COMP) {
-        if(*line == '\0') return 1;
-        else {
-            printf("Extraneous text after end of command.\n");
-            return 0;
-        }
-    }
+    if(c == PRINT_COMP || c == ABS_COMP) return decode_1_variable(line);
+
     /* check for comma */
     if(*line != ',') {
         printf("Missing comma.\n");
@@ -105,6 +94,7 @@ int decode_line(char line[], int *command, char *var1, char *var2, double *num1,
         printf("Multiple consecutive commas\n");
         return 0;
     }
+
     /* divide into 3 cases */
     if(c == ADD_COMP || c == SUB_COMP || c == MULT_COMP_COMP) return decode_2_variables(line, var2);
     else if(c == MULT_COMP_REAL || c == MULT_COMP_IMG) return decode_mult(line, num1);
@@ -113,13 +103,48 @@ int decode_line(char line[], int *command, char *var1, char *var2, double *num1,
     return 1;
 }
 
+void execute_line(complex variables[], int command, char var1, char var2, double num1, double num2) {
+    complex *var1Ptr, *var2Ptr; /* pointers to the complex variables given in the line */
+    var1Ptr = &variables[var1 - 'A'];
+    if(command == PRINT_COMP) print_comp(*var1Ptr);
+    else if(command == ABS_COMP) abs_comp(*var1Ptr);
+    else if(command == ADD_COMP || command == SUB_COMP || command == MULT_COMP_COMP) {
+        var2Ptr = &variables[var2 - 'A'];
+        if(command == ADD_COMP) add_comp(*var1Ptr, *var2Ptr);
+        if(command == SUB_COMP) sub_comp(*var1Ptr, *var2Ptr);
+        if(command == MULT_COMP_COMP) mult_comp_comp(*var1Ptr, *var2Ptr);
+    }
+    else if(command == MULT_COMP_REAL) mult_comp_real(*var1Ptr, num1);
+    else if(command == MULT_COMP_IMG) mult_comp_img(*var1Ptr, num1);
+    else read_comp(var1Ptr, num1, num2); 
+}
+
 int find_command(char *line) {
-    int command_len, i = 0;
+    int i = 0;
     for(i = 0; i < NUM_COMMANDS; i++) {
-        command_len = strlen(commands[i]);
-        if(!strncmp(line, commands[i], command_len)) return i;
+        if(!strncmp(line, commands[i], strlen(commands[i]))) return i;
     }
     return -1;
+}
+
+int decode_stop(char *line) {
+    remove_whites(line);
+    if(*line == '\0') {
+        printf("Exiting program with stop command.\n");
+        return 1;
+    }
+    else {
+        printf("Extraneous text after end of command.\n");
+        return 0;
+    }
+}
+
+int decode_1_variable(char *line) {
+    if(*line == '\0') return 1;
+    else {
+        printf("Extraneous text after end of command.\n");
+        return 0;
+    }
 }
 
 void remove_whites(char *line) {
