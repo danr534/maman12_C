@@ -28,10 +28,16 @@ int decode_read_comp(char *line, double *num1, double *num2);
 
 void get_line(char line[]) {
     printf("Please enter a command:\n");
+
+    /* check if reached EOF */
     if(fgets(line, LINE_LEN, stdin) == NULL) {
         printf("Reached EOF before stop command.\nThe program has finished.");
         exit(0);
     }
+
+    /* print the line */
+    printf("The line you entered is:\n");
+    printf("%s", line);
 }
 
 int decode_line(char line[], int *command, char *var1, char *var2, double *num1, double *num2) {
@@ -130,7 +136,7 @@ int find_command(char *line) {
 int decode_stop(char *line) {
     remove_whites(line);
     if(*line == '\0') {
-        printf("Exiting program with stop command.\n");
+        printf("\nExiting program with stop command.");
         return 1;
     }
     else {

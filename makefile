@@ -1,5 +1,5 @@
 # Compiler Flags
-CFLAGS = -Wall -ansi -pedantic -std=c90
+CFLAGS = -Wall -ansi -pedantic -std=c89
 
 
 mycomp: mycomp.o handle_input.o complex.o

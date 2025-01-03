@@ -1,6 +1,0 @@
-read_comp A, 1, 1
-print_comp A
-read_comp B, 2, 2
-print_comp B
-add_comp A, B
-stop

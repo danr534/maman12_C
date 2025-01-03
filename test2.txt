@@ -1,0 +1,12 @@
+read_comp E, 1, 2
+read_comp F, -1, -2
+add_comp A, G
+    mult_comp_comp E, F
+mult_comp_img E  , 3.25
+sub_comp A B
+abs_comp 
+mult_comp_real A, -1;
+
+stop
+
+
